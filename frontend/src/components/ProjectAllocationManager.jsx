@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { api } from "../api/client";
+import PaginationControls from "./PaginationControls";
 
 const normalizeId = (value) => {
   if (value === undefined || value === null) {
@@ -32,9 +33,21 @@ function Modal({ open, title, onClose, children, footer }) {
 
 function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialIds, onAllocationsSaved }) {
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({ category: "", lineType: "" });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedLines, setSelectedLines] = useState({});
   const [modalState, setModalState] = useState({ open: false, material: null, quantity: "" });
   const [saving, setSaving] = useState(false);
+
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(materials.map((m) => m.category).filter(Boolean))).sort(),
+    [materials]
+  );
+  const lineTypeOptions = useMemo(
+    () => Array.from(new Set(materials.map((m) => m.lineType).filter(Boolean))).sort(),
+    [materials]
+  );
 
   // Materials which are NOT yet allocated to this project
   const filteredMaterials = useMemo(() => {
@@ -42,6 +55,8 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
     return materials
       .filter((m) => !allocatedMaterialIds.has(String(m.id)))
       .filter((m) => {
+        if (filters.category && m.category !== filters.category) return false;
+        if (filters.lineType && m.lineType !== filters.lineType) return false;
         if (!q) return true;
         return (
           (m.code || "").toLowerCase().includes(q) ||
@@ -50,7 +65,20 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
         );
       })
       .sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-  }, [materials, allocatedMaterialIds, search]);
+  }, [materials, allocatedMaterialIds, search, filters]);
+
+  const pagination = useMemo(() => {
+    const totalItems = filteredMaterials.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const start = (currentPage - 1) * pageSize;
+    const currentItems = filteredMaterials.slice(start, start + pageSize);
+    return { currentItems, totalItems, totalPages, page: currentPage };
+  }, [filteredMaterials, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filters]);
 
   const openModalForMaterial = (material) => {
     const key = String(material.id);
@@ -97,6 +125,13 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
     }
     setSaving(true);
     try {
+      const hasInvalid = entries.some(([, data]) => !data.quantity || Number(data.quantity) <= 0);
+      if (hasInvalid) {
+        toast.error("Enter a required quantity greater than zero for each material");
+        setSaving(false);
+        return;
+      }
+
       for (const [materialId, data] of entries) {
         await api.createProjectAllocation(token, projectId, {
           projectId,
@@ -127,6 +162,41 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
     [selectedLines]
   );
 
+  const toggleSelected = (material, value) => {
+    const key = String(material.id);
+    setSelectedLines((prev) => {
+      const next = { ...prev };
+      if (value === false || (value === undefined && prev[key])) {
+        delete next[key];
+        return next;
+      }
+      next[key] = prev[key] || { quantity: 0, material };
+      return next;
+    });
+  };
+
+  const updateSelectedQuantity = (materialId, quantity) => {
+    setSelectedLines((prev) => {
+      const key = String(materialId);
+      const existing = prev[key];
+      const next = { ...prev };
+      if (!existing) {
+        next[key] = { material: materials.find((m) => String(m.id) === key), quantity };
+        return next;
+      }
+      next[key] = { ...existing, quantity };
+      return next;
+    });
+  };
+
+  const removeSelectedLine = (materialId) => {
+    setSelectedLines((prev) => {
+      const next = { ...prev };
+      delete next[materialId];
+      return next;
+    });
+  };
+
   if (!projectId) {
     return (
       <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-600">
@@ -140,43 +210,92 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
       {/* LEFT: all materials not yet allocated */}
       <div className="mt-4 grid gap-4 lg:grid-cols-[2fr,1fr]">
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[11px]">
             <div className="font-semibold text-slate-800">All materials (not yet allocated)</div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500">Search</span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Code, name or part no."
-                className="w-40 rounded border border-slate-200 px-2 py-[3px] text-[11px] text-slate-700"
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1 text-slate-500">
+                <span className="whitespace-nowrap">Line</span>
+                <select
+                  value={filters.lineType}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, lineType: e.target.value }))}
+                  className="rounded border border-slate-200 bg-white px-2 py-[3px] text-[11px] text-slate-700"
+                >
+                  <option value="">All</option>
+                  {lineTypeOptions.map((line) => (
+                    <option key={line} value={line}>
+                      {line}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1 text-slate-500">
+                <span className="whitespace-nowrap">Category</span>
+                <select
+                  value={filters.category}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, category: e.target.value }))}
+                  className="rounded border border-slate-200 bg-white px-2 py-[3px] text-[11px] text-slate-700"
+                >
+                  <option value="">All</option>
+                  {categoryOptions.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-center gap-1 text-slate-500">
+                <span>Search</span>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Code, name or part no."
+                  className="w-44 rounded border border-slate-200 px-2 py-[3px] text-[11px] text-slate-700"
+                />
+              </div>
             </div>
           </div>
-          <div className="max-h-[320px] overflow-auto rounded border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded border border-slate-200 bg-white">
             <table className="min-w-full border-collapse text-[11px]">
-              <thead className="bg-slate-50">
+              <thead className="bg-slate-50 text-slate-600">
                 <tr>
+                  <th className="border border-slate-200 px-2 py-1 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all materials"
+                      checked={pagination.currentItems.length > 0 &&
+                        pagination.currentItems.every((m) => selectedLines[String(m.id)])}
+                      onChange={(e) =>
+                        pagination.currentItems.forEach((m) => toggleSelected(m, e.target.checked))
+                      }
+                    />
+                  </th>
                   <th className="border border-slate-200 px-2 py-1 text-left">Code</th>
                   <th className="border border-slate-200 px-2 py-1 text-left">Material</th>
                   <th className="border border-slate-200 px-2 py-1 text-left">Part No</th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">Line</th>
                   <th className="border border-slate-200 px-2 py-1 text-left">UOM</th>
                   <th className="border border-slate-200 px-2 py-1 text-left">Category</th>
                   <th className="border border-slate-200 px-2 py-1 text-right">Required qty</th>
+                  <th className="border border-slate-200 px-2 py-1 text-center">Set</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredMaterials.map((material) => {
+                {pagination.currentItems.map((material) => {
                   const key = String(material.id);
                   const existing = selectedLines[key];
                   return (
                     <tr
                       key={key}
-                      className={`cursor-pointer ${
-                        existing ? "bg-emerald-50" : "hover:bg-slate-50"
-                      }`}
-                      onClick={() => openModalForMaterial(material)}
+                      className={`transition hover:bg-slate-50 ${existing ? "bg-emerald-50" : ""}`}
                     >
+                      <td className="border border-slate-200 px-2 py-1 text-center">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(existing)}
+                          onChange={(e) => toggleSelected(material, e.target.checked)}
+                        />
+                      </td>
                       <td className="border border-slate-200 px-2 py-1 font-mono">
                         {material.code || "—"}
                       </td>
@@ -186,35 +305,132 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
                       <td className="border border-slate-200 px-2 py-1">
                         {material.partNo || "—"}
                       </td>
-                      <td className="border border-slate-200 px-2 py-1">
-                        {material.unit || "—"}
-                      </td>
-                      <td className="border border-slate-200 px-2 py-1">
-                        {material.category || "—"}
-                      </td>
+                      <td className="border border-slate-200 px-2 py-1">{material.lineType || "—"}</td>
+                      <td className="border border-slate-200 px-2 py-1">{material.unit || "—"}</td>
+                      <td className="border border-slate-200 px-2 py-1">{material.category || "—"}</td>
                       <td className="border border-slate-200 px-2 py-1 text-right">
-                        {existing ? existing.quantity : "—"}
+                        {existing ? Number(existing.quantity || 0).toLocaleString() : "—"}
+                      </td>
+                      <td className="border border-slate-200 px-2 py-1 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={existing ? existing.quantity : ""}
+                            onFocus={() => toggleSelected(material, true)}
+                            onChange={(e) => updateSelectedQuantity(material.id, Number(e.target.value))}
+                            className="w-24 rounded border border-slate-200 px-2 py-[3px] text-right"
+                          />
+                          <button
+                            type="button"
+                            className="text-[10px] font-semibold text-sky-700"
+                            onClick={() => openModalForMaterial(material)}
+                          >
+                            Set
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
-                {filteredMaterials.length === 0 && (
+                {pagination.currentItems.length === 0 && (
                   <tr>
                     <td
                       className="border border-slate-200 px-2 py-3 text-center text-slate-500"
-                      colSpan={6}
+                      colSpan={9}
                     >
                       All materials are already allocated for this project, or nothing matches your
-                      search.
+                      filters.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+          <div className="mt-2">
+            <PaginationControls
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              pageSize={pageSize}
+              totalItems={pagination.totalItems}
+              onPageChange={(value) => setPage(value)}
+              onPageSizeChange={(value) => setPageSize(value)}
+            />
+          </div>
         </div>
-
-
+        <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-3 text-[11px] text-slate-700">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+            <div>
+              <div className="text-[12px] font-semibold text-slate-900">Selected materials</div>
+              <div className="text-[10px] text-slate-500">Tap rows on the left to add quantities</div>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2 py-[2px] text-[10px] font-semibold text-slate-600">
+              {selectedCount}
+            </span>
+          </div>
+          {selectedSummary.length === 0 && (
+            <div className="flex flex-1 items-center justify-center py-6 text-slate-500">
+              No materials selected yet.
+            </div>
+          )}
+          {selectedSummary.length > 0 && (
+            <div className="mt-3 space-y-3 overflow-y-auto">
+              {selectedSummary.map((item) => (
+                <div
+                  key={item.materialId}
+                  className="flex items-center justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-[11px] font-semibold text-slate-900">{item.label}</div>
+                    <div className="text-[10px] text-slate-500">Required qty</div>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.quantity}
+                    onChange={(e) => updateSelectedQuantity(item.materialId, Number(e.target.value))}
+                    className="w-24 rounded border border-slate-200 px-2 py-[3px] text-right text-[11px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedLine(item.materialId)}
+                    className="text-[10px] font-semibold text-rose-600 hover:text-rose-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center justify-between rounded border border-dashed border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-800">
+                <span>Total required quantity</span>
+                <span>
+                  {selectedSummary
+                    .reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-3">
+            <button
+              type="button"
+              onClick={handleSubmitAll}
+              disabled={saving || selectedSummary.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {saving ? "Allocating…" : "Allocate selected"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLines({})}
+              disabled={selectedSummary.length === 0 || saving}
+              className="rounded border border-slate-200 px-3 py-2 text-[11px] text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* quantity modal for single material (like inward/outward) */}
@@ -291,6 +507,8 @@ export default function ProjectAllocationManager({
   onBack,
   onProjectBomUpdate,
   onCreateMaterial,
+  showMultiAllocator = true,
+  showAllocationTable = true,
 }) {
   const [selectedProjectId, setSelectedProjectId] = useState(() =>
     normalizeId(defaultProjectId ?? projects[0]?.id)
@@ -610,24 +828,28 @@ export default function ProjectAllocationManager({
             ))}
           </select>
         </label>
-        <input
-          type="text"
-          placeholder="Search code or material"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-xs rounded border border-slate-200 px-2 py-[3px] text-slate-700"
-        />
-        <button
-          type="button"
-          onClick={() => setFiltersOpen((prev) => !prev)}
-          className="rounded border border-slate-200 px-3 py-[3px] text-slate-600 hover:bg-slate-50"
-        >
-          {filtersOpen ? "Hide filters" : "Advanced filters"}
-        </button>
+        {showAllocationTable && (
+          <>
+            <input
+              type="text"
+              placeholder="Search code or material"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-xs rounded border border-slate-200 px-2 py-[3px] text-slate-700"
+            />
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((prev) => !prev)}
+              className="rounded border border-slate-200 px-3 py-[3px] text-slate-600 hover:bg-slate-50"
+            >
+              {filtersOpen ? "Hide filters" : "Advanced filters"}
+            </button>
+          </>
+        )}
         {loading && <span className="text-[10px] text-slate-500">Loading…</span>}
       </div>
 
-      {filtersOpen && (
+      {filtersOpen && showAllocationTable && (
         <div className="mt-2 grid gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 text-[11px] text-slate-600 sm:grid-cols-3">
           <label className="flex flex-col gap-1">
             <span className="text-[10px] font-semibold uppercase text-slate-500">Line Type</span>
@@ -697,124 +919,130 @@ export default function ProjectAllocationManager({
         <div className="mt-3 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-600">{error}</div>
       )}
 
-      <MultiAllocationPanel
-        token={token}
-        projectId={selectedProjectId}
-        materials={materials}
-        allocatedMaterialIds={allocatedMaterialIds}
-        onAllocationsSaved={() => loadAllocations(selectedProjectId)}
-      />
+      {showMultiAllocator && (
+        <MultiAllocationPanel
+          token={token}
+          projectId={selectedProjectId}
+          materials={materials}
+          allocatedMaterialIds={allocatedMaterialIds}
+          onAllocationsSaved={() => loadAllocations(selectedProjectId)}
+        />
+      )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-        <span className="text-slate-700">Selected: {selectedCount}</span>
-        <button
-          type="button"
-          onClick={toggleSelectAll}
-          className="rounded border border-slate-200 px-3 py-[3px] hover:bg-slate-50"
-          disabled={filteredAllocations.length === 0}
-        >
-          {filteredAllocations.length > 0 && filteredAllocations.every((line) => selectedLineIds.has(String(line.materialId)))
-            ? "Clear selection"
-            : "Select all"}
-        </button>
-        <button
-          type="button"
-          onClick={handleBulkDelete}
-          className="rounded border border-rose-200 px-3 py-[3px] text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-          disabled={selectedCount === 0}
-        >
-          Delete selected
-        </button>
-      </div>
+      {showAllocationTable && (
+        <>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+            <span className="text-slate-700">Selected: {selectedCount}</span>
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="rounded border border-slate-200 px-3 py-[3px] hover:bg-slate-50"
+              disabled={filteredAllocations.length === 0}
+            >
+              {filteredAllocations.length > 0 && filteredAllocations.every((line) => selectedLineIds.has(String(line.materialId)))
+                ? "Clear selection"
+                : "Select all"}
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="rounded border border-rose-200 px-3 py-[3px] text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+              disabled={selectedCount === 0}
+            >
+              Delete selected
+            </button>
+          </div>
 
-      <div className="mt-3 overflow-x-auto rounded border border-slate-200">
-        <table className="min-w-full border-collapse text-[11px] text-slate-800">
-          <thead>
-            <tr className="bg-slate-100 text-slate-600">
-              <th className="border border-slate-200 px-2 py-1 text-center">
-                <input
-                  type="checkbox"
-                  aria-label="Select all"
-                  checked={filteredAllocations.length > 0 && filteredAllocations.every((line) => selectedLineIds.has(String(line.materialId)))}
-                  onChange={toggleSelectAll}
-                />
-              </th>
-              <th className="border border-slate-200 px-2 py-1 text-left">Code</th>
-              <th className="border border-slate-200 px-2 py-1 text-left">Material</th>
-              <th className="border border-slate-200 px-2 py-1 text-left">Part No</th>
-              <th className="border border-slate-200 px-2 py-1 text-left">Line Type</th>
-              <th className="border border-slate-200 px-2 py-1 text-left">UOM</th>
-              <th className="border border-slate-200 px-2 py-1 text-left">Category</th>
-              <th className="border border-slate-200 px-2 py-1 text-right">Total Required Qty</th>
-              <th className="border border-slate-200 px-2 py-1 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAllocations.map((line) => (
-              <tr
-                key={`${line.projectId}-${line.materialId}`}
-                className={`cursor-pointer ${selectedLineIds.has(String(line.materialId)) ? "bg-emerald-50" : "bg-white"}`}
-                onClick={() => toggleSelectLine(line.materialId)}
-              >
-                <td className="border border-slate-200 px-2 py-1 text-center">
-                  <input
-                    type="checkbox"
-                    checked={selectedLineIds.has(String(line.materialId))}
-                    onChange={() => toggleSelectLine(line.materialId)}
-                    onClick={(event) => event.stopPropagation()}
-                  />
-                </td>
-                <td className="border border-slate-200 px-2 py-1 font-mono">{line.code || line.materialRef?.code}</td>
-                <td className="border border-slate-200 px-2 py-1">{line.name || line.materialRef?.name}</td>
-                <td className="border border-slate-200 px-2 py-1">{line.partNo || line.materialRef?.partNo || "-"}</td>
-                <td className="border border-slate-200 px-2 py-1">{line.lineType || line.materialRef?.lineType || "-"}</td>
-                <td className="border border-slate-200 px-2 py-1">{line.unit || line.materialRef?.unit || "-"}</td>
-                <td className="border border-slate-200 px-2 py-1">{line.category || line.materialRef?.category || "-"}</td>
-                <td className="border border-slate-200 px-2 py-1 text-right">{Number(line.qty || 0).toLocaleString()}</td>
-                <td className="border border-slate-200 px-2 py-1 text-center">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleOpenView(line);
-                    }}
-                    className="mr-2 text-xs text-slate-500"
+          <div className="mt-3 overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full border-collapse text-[11px] text-slate-800">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600">
+                  <th className="border border-slate-200 px-2 py-1 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all"
+                      checked={filteredAllocations.length > 0 && filteredAllocations.every((line) => selectedLineIds.has(String(line.materialId)))}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">Code</th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">Material</th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">Part No</th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">Line Type</th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">UOM</th>
+                  <th className="border border-slate-200 px-2 py-1 text-left">Category</th>
+                  <th className="border border-slate-200 px-2 py-1 text-right">Total Required Qty</th>
+                  <th className="border border-slate-200 px-2 py-1 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAllocations.map((line) => (
+                  <tr
+                    key={`${line.projectId}-${line.materialId}`}
+                    className={`cursor-pointer ${selectedLineIds.has(String(line.materialId)) ? "bg-emerald-50" : "bg-white"}`}
+                    onClick={() => toggleSelectLine(line.materialId)}
                   >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleOpenEdit(line);
-                    }}
-                    className="mr-2 text-xs text-sky-500"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleDelete(line);
-                    }}
-                    className="text-xs text-rose-500"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredAllocations.length === 0 && (
-              <tr>
-                <td className="border border-slate-200 px-2 py-3 text-center text-slate-500" colSpan={9}>
-                  {selectedProjectId ? "No allocations defined for this project." : "Select a project to view allocations."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                    <td className="border border-slate-200 px-2 py-1 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedLineIds.has(String(line.materialId))}
+                        onChange={() => toggleSelectLine(line.materialId)}
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    </td>
+                    <td className="border border-slate-200 px-2 py-1 font-mono">{line.code || line.materialRef?.code}</td>
+                    <td className="border border-slate-200 px-2 py-1">{line.name || line.materialRef?.name}</td>
+                    <td className="border border-slate-200 px-2 py-1">{line.partNo || line.materialRef?.partNo || "-"}</td>
+                    <td className="border border-slate-200 px-2 py-1">{line.lineType || line.materialRef?.lineType || "-"}</td>
+                    <td className="border border-slate-200 px-2 py-1">{line.unit || line.materialRef?.unit || "-"}</td>
+                    <td className="border border-slate-200 px-2 py-1">{line.category || line.materialRef?.category || "-"}</td>
+                    <td className="border border-slate-200 px-2 py-1 text-right">{Number(line.qty || 0).toLocaleString()}</td>
+                    <td className="border border-slate-200 px-2 py-1 text-center">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenView(line);
+                        }}
+                        className="mr-2 text-xs text-slate-500"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleOpenEdit(line);
+                        }}
+                        className="mr-2 text-xs text-sky-500"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDelete(line);
+                        }}
+                        className="text-xs text-rose-500"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredAllocations.length === 0 && (
+                  <tr>
+                    <td className="border border-slate-200 px-2 py-3 text-center text-slate-500" colSpan={9}>
+                      {selectedProjectId ? "No allocations defined for this project." : "Select a project to view allocations."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       <Modal
         open={formModal.open}

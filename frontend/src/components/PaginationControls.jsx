@@ -23,7 +23,7 @@ export default function PaginationControls({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] text-slate-600">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-[11px] text-slate-700 shadow-sm">
       <div>
         Showing <span className="font-semibold text-slate-900">{start}</span>-
         <span className="font-semibold text-slate-900">{end}</span> of
@@ -35,7 +35,7 @@ export default function PaginationControls({
           <select
             value={pageSize}
             onChange={handlePageSizeChange}
-            className="rounded-full border border-slate-200 px-3 py-1 text-[11px]"
+            className="rounded-full border border-[var(--border)] px-3 py-[6px] text-[11px] focus:border-[var(--primary)] focus:outline-none"
             disabled={disabled}
           >
             {[5, 10, 25, 50, 100].map((size) => (
@@ -48,7 +48,7 @@ export default function PaginationControls({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-[var(--border)] px-3 py-[6px] text-[11px] text-slate-700 transition hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => canPrev && onPageChange?.(clampedPage - 1)}
             disabled={!canPrev}
           >
@@ -59,7 +59,7 @@ export default function PaginationControls({
           </div>
           <button
             type="button"
-            className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-[var(--border)] px-3 py-[6px] text-[11px] text-slate-700 transition hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => canNext && onPageChange?.(clampedPage + 1)}
             disabled={!canNext}
           >
