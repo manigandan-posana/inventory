@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router-dom";
 const tabs = [
   { path: "materials", label: "Material Directory" },
   { path: "allocations", label: "Material Allocations" },
+  { path: "allocated", label: "Allocated Materials" },
   { path: "projects", label: "Project Management" },
   { path: "users", label: "User Management" },
 ];

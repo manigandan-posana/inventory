@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
-import ProjectAllocationManager from "../../components/ProjectAllocationManager";
 import { useNavigate } from "react-router-dom";
+import ProjectAllocationManager from "../../components/ProjectAllocationManager";
 import { clearAllocationError, loadAllocationData } from "../../store/adminAllocationsSlice";
 
-export default function MaterialAllocationsPage({ onRequestReload }) {
+export default function AllocatedMaterialsPage({ onRequestReload }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const token = useSelector((state) => state.auth.token);
@@ -28,23 +28,21 @@ export default function MaterialAllocationsPage({ onRequestReload }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-base font-semibold text-slate-900">Project Allocations</div>
-          <p className="text-[11px] text-slate-500">
-            Assign the total required quantity per material for each project.
-          </p>
+          <div className="text-base font-semibold text-slate-900">Allocated materials</div>
+          <p className="text-[11px] text-slate-500">Review and adjust the required quantities already mapped to each project.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-[11px]">
           <button
             type="button"
-            onClick={() => navigate("/admin/allocated")}
-            className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-700 hover:bg-slate-100"
+            onClick={() => navigate("/admin/allocations")}
+            className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 hover:bg-slate-100"
           >
-            View allocated materials
+            Back to allocation builder
           </button>
           <button
             type="button"
             onClick={() => navigate("/admin/materials")}
-            className="rounded-full border border-slate-200 px-3 py-1 text-[11px] text-slate-600 hover:bg-slate-100"
+            className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-100"
           >
             Go to Material Directory
           </button>
@@ -61,7 +59,8 @@ export default function MaterialAllocationsPage({ onRequestReload }) {
           materials={materials}
           onProjectBomUpdate={onRequestReload}
           onCreateMaterial={() => navigate("/admin/materials")}
-          showAllocationTable={false}
+          showMultiAllocator={false}
+          showAllocationTable
         />
       )}
     </div>

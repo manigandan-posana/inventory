@@ -8,6 +8,7 @@ import UserLogin from "./components/UserLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import MaterialDirectoryPage from "./pages/admin/MaterialDirectoryPage";
 import MaterialAllocationsPage from "./pages/admin/MaterialAllocationsPage";
+import AllocatedMaterialsPage from "./pages/admin/AllocatedMaterialsPage";
 import ProjectManagementPage from "./pages/admin/ProjectManagementPage";
 import UserManagementPage from "./pages/admin/UserManagementPage";
 import WorkspaceLayout from "./pages/workspace/WorkspaceLayout";
@@ -249,6 +250,10 @@ export default function App() {
               <Route
                 path="allocations"
                 element={<MaterialAllocationsPage onRequestReload={requestDataReload} />}
+              />
+              <Route
+                path="allocated"
+                element={<AllocatedMaterialsPage onRequestReload={requestDataReload} />}
               />
               <Route
                 path="projects"
