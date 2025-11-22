@@ -63,8 +63,8 @@ function AuthLanding({
   userLoginLoading,
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 p-4">
-      <div className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-2">
+    <div className="min-h-screen bg-white px-4 py-8">
+      <div className="mx-auto grid w-full max-w-screen-lg gap-5 lg:grid-cols-2">
         <AdminLogin onSubmit={onAdminLogin} error={adminLoginError} loading={adminLoginLoading} />
         <UserLogin onSubmit={onUserLogin} error={userLoginError} loading={userLoginLoading} />
       </div>
@@ -179,9 +179,9 @@ export default function App() {
 
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-700">
-        <div className="rounded-xl border border-slate-200 bg-white px-6 py-4 text-sm shadow-xl">
-          Preparing your workspace…
+      <div className="flex min-h-screen items-center justify-center bg-white text-slate-800">
+        <div className="rounded-lg border border-slate-200 bg-white px-5 py-3 text-xs shadow-md">
+          Loading your workspace…
         </div>
         <Toaster position="bottom-center" />
       </div>
