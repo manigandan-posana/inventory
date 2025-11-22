@@ -97,6 +97,13 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
     }
     setSaving(true);
     try {
+      const hasInvalid = entries.some(([, data]) => !data.quantity || Number(data.quantity) <= 0);
+      if (hasInvalid) {
+        toast.error("Enter a required quantity greater than zero for each material");
+        setSaving(false);
+        return;
+      }
+
       for (const [materialId, data] of entries) {
         await api.createProjectAllocation(token, projectId, {
           projectId,
@@ -126,6 +133,21 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
       })),
     [selectedLines]
   );
+
+  const updateSelectedQuantity = (materialId, quantity) => {
+    setSelectedLines((prev) => {
+      if (!prev[materialId]) return prev;
+      return { ...prev, [materialId]: { ...prev[materialId], quantity } };
+    });
+  };
+
+  const removeSelectedLine = (materialId) => {
+    setSelectedLines((prev) => {
+      const next = { ...prev };
+      delete next[materialId];
+      return next;
+    });
+  };
 
   if (!projectId) {
     return (
@@ -213,8 +235,70 @@ function MultiAllocationPanel({ token, projectId, materials, allocatedMaterialId
             </table>
           </div>
         </div>
-
-
+        <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-3 text-[11px] text-slate-700">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+            <div>
+              <div className="text-[12px] font-semibold text-slate-900">Selected materials</div>
+              <div className="text-[10px] text-slate-500">Tap rows on the left to add quantities</div>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2 py-[2px] text-[10px] font-semibold text-slate-600">
+              {selectedCount}
+            </span>
+          </div>
+          {selectedSummary.length === 0 && (
+            <div className="flex flex-1 items-center justify-center py-6 text-slate-500">
+              No materials selected yet.
+            </div>
+          )}
+          {selectedSummary.length > 0 && (
+            <div className="mt-3 space-y-3 overflow-y-auto">
+              {selectedSummary.map((item) => (
+                <div
+                  key={item.materialId}
+                  className="flex items-center justify-between gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-[11px] font-semibold text-slate-900">{item.label}</div>
+                    <div className="text-[10px] text-slate-500">Required qty</div>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.quantity}
+                    onChange={(e) => updateSelectedQuantity(item.materialId, Number(e.target.value))}
+                    className="w-24 rounded border border-slate-200 px-2 py-[3px] text-right text-[11px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeSelectedLine(item.materialId)}
+                    className="text-[10px] font-semibold text-rose-600 hover:text-rose-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-3">
+            <button
+              type="button"
+              onClick={handleSubmitAll}
+              disabled={saving || selectedSummary.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {saving ? "Allocating…" : "Allocate selected"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLines({})}
+              disabled={selectedSummary.length === 0 || saving}
+              className="rounded border border-slate-200 px-3 py-2 text-[11px] text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* quantity modal for single material (like inward/outward) */}
