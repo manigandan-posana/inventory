@@ -13,40 +13,43 @@ export default function UserLogin({ onSubmit, error, loading }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-4 shadow">
-      <div className="mb-2 text-center text-base font-semibold text-slate-800">User Workspace</div>
-      <p className="mb-3 text-center text-[11px] text-slate-500">
-        Procurement Managers and Project Heads get all projects, others see assigned projects.
-      </p>
-      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-xl border border-[var(--border)] bg-white px-4 py-5 text-[12px] shadow-sm"
+    >
+      <div className="mb-1 text-center text-sm font-semibold text-black">Workspace access</div>
+      <p className="mb-4 text-center text-[11px] text-slate-600">Fast entry for project and procurement teams.</p>
+      <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wide text-slate-600">
         Email
         <input
           type="email"
           value={form.email}
           onChange={(e) => handleChange("email", e.target.value)}
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-[9px] text-[12px] focus:border-[var(--primary)] focus:outline-none focus:ring-0"
           required
         />
       </label>
-      <label className="mb-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <label className="mb-3 block text-[11px] font-semibold uppercase tracking-wide text-slate-600">
         Password
         <input
           type="password"
           value={form.password}
           onChange={(e) => handleChange("password", e.target.value)}
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+          className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-[9px] text-[12px] focus:border-[var(--primary)] focus:outline-none focus:ring-0"
           required
         />
       </label>
-      {error && <div className="mb-3 rounded bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>}
+      {error && (
+        <div className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-rose-600">{error}</div>
+      )}
       <button
         type="submit"
         disabled={loading}
-        className={`w-full rounded px-3 py-2 text-sm font-semibold text-white ${
-          loading ? "bg-slate-400" : "bg-sky-600 hover:bg-sky-700"
+        className={`w-full rounded-lg px-3 py-[10px] text-[12px] font-semibold text-white transition ${
+          loading ? "bg-slate-400" : "bg-[var(--primary)] hover:bg-[#0f65d7]"
         }`}
       >
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? "Signing in…" : "Enter workspace"}
       </button>
     </form>
   );
