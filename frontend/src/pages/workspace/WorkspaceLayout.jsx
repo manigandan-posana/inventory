@@ -42,20 +42,22 @@ export default function WorkspaceLayout({ token, currentUser, onLogout, onOpenAd
   }, [location.pathname, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-white text-slate-900">
       <WorkspaceHeader currentUser={currentUser} onLogout={onLogout} onOpenAdmin={onOpenAdmin} />
-      <div className="mx-auto max-w-6xl px-4 pb-10">
-        <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-slate-200 bg-slate-50 px-4 py-2 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Workspace</div>
-            <div className="flex flex-wrap gap-1 text-sm">
+      <div className="mx-auto w-full max-w-screen-2xl px-4 pb-10">
+        <div className="sticky top-0 z-10 -mx-4 mb-3 border-b border-[var(--border)] bg-white/95 px-4 py-2 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Workspace</div>
+            <div className="flex flex-wrap gap-1 text-[12px] font-semibold">
               {NAV_LINKS.map((link) => (
                 <NavLink
                   key={link.to}
                   to={`/workspace/${link.to}`}
                   className={({ isActive }) =>
-                    `rounded-full px-3 py-1 text-[12px] font-semibold ${
-                      isActive ? "bg-slate-800 text-white" : "bg-white text-slate-700 hover:bg-slate-100"
+                    `px-3 py-[7px] transition ${
+                      isActive
+                        ? "text-[var(--primary)] border-b-2 border-[var(--primary)]"
+                        : "text-slate-700 hover:text-[var(--primary)]"
                     }`
                   }
                 >
@@ -64,7 +66,7 @@ export default function WorkspaceLayout({ token, currentUser, onLogout, onOpenAd
               ))}
             </div>
             {status === "loading" && (
-              <div className="text-[12px] text-slate-500">Refreshing data…</div>
+              <div className="text-[11px] text-slate-500">Refreshing…</div>
             )}
           </div>
         </div>
