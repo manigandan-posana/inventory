@@ -1,0 +1,6 @@
+Placeholder favicon file to satisfy browser requests.
+
+This file is intentionally minimal; serving a valid resource under
+`/favicon.ico` prevents Spring Boot from logging a `NoResourceFoundException` when
+browsers request the default favicon. You may replace this file with an
+actual ICO image if desired.

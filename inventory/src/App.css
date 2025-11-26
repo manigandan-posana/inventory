@@ -1,0 +1,84 @@
+/*
+ * Global styles for the application.
+ *
+ * We define a few utility classes here to refine the look and feel of
+ * tables, form inputs and alignment. The existing components use
+ * Tailwind utility classes extensively; these supplemental styles
+ * provide a cohesive, professional appearance without having to repeat
+ * long class strings everywhere. Adjusting these values will affect
+ * all screens uniformly.
+ */
+
+/*
+ * Base table styling. Tables using the `data-table` or `compact-table`
+ * classes will inherit these rules. A subtle border separates rows and
+ * columns, and alternating row backgrounds improve readability. Font
+ * sizes are kept small to maximise the information density on each
+ * screen.
+ */
+.data-table,
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.6875rem; /* 11px */
+}
+
+.data-table th,
+.data-table td,
+.compact-table th,
+.compact-table td {
+  padding: 0.375rem 0.5rem; /* tight vertical spacing */
+  border-bottom: 1px solid #e2e8f0; /* matches Tailwind's slate-200 */
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* Alternate row shading for tables */
+.data-table tr:nth-child(even),
+.compact-table tr:nth-child(even) {
+  background-color: #f9fafb; /* subtle grey background */
+}
+
+/* Tighten cells marked as "tight" (typically IDs or short values) */
+.cell-tight {
+  white-space: nowrap;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+/* Right–align numeric or action columns */
+.cell-right,
+.cell-number {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Standardise input and select styling. The project uses Tailwind to
+ * compose these classes, but a global baseline helps achieve a more
+ * consistent feel across all forms. Smaller padding and font sizes
+ * reduce the overall height of form elements.
+ */
+input,
+select,
+textarea {
+  font-size: 0.6875rem; /* 11px */
+  padding: 0.375rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #94a3b8; /* slate-400 */
+  box-shadow: none;
+}
+
+/* Buttons inherit their styles from Tailwind. We only reduce font size
+ * here to match the compact form controls defined above. Padding is
+ * controlled by each component individually.
+ */
+button {
+  font-size: 0.6875rem;
+}
